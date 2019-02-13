@@ -34,6 +34,14 @@ void printMatrix(int matrix[MAX][MAX]) {
 // the cell of matSumResult at the coordinates to the sum of the
 // values at the coordinates of matA and matB.
 void* computeSum(void* args) {
+
+    int row = *((int*) args);
+    int col = *(((int*) args)+1);
+
+    matSumResult[row][col] = matA[row][col] + matB[row][col];
+
+    free(args);
+
     return NULL;
 }
 
@@ -57,6 +65,8 @@ int main() {
     srand(time(0));  // Do Not Remove. Just ignore and continue below.
 
     // 1. Fill the matrices (matA and matB) with random values.
+    fillMatrix(matA);
+    fillMatrix(matB);
 
     // 2. Print the initial matrices.
     printf("Matrix A:\n");
@@ -65,6 +75,16 @@ int main() {
     printMatrix(matB);
 
     // 3. Create pthread_t objects for our threads.
+    pthread_t sumThreads[MAX * MAX];
+    for (int row = 0; row < MAX; row++) {
+        for (int col = 0; col < MAX; col++) {
+            int *args = (int*) malloc(2 * sizeof(int));
+            *args = row;
+            *(args+1) = col;
+            pthread_create(&sumThreads[row * 3 + col], NULL, computeSum, (void*) args);
+
+        }
+    }
 
     // 4. Create a thread for each cell of each matrix operation.
     //
