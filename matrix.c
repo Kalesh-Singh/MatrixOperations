@@ -34,14 +34,10 @@ void printMatrix(int matrix[MAX][MAX]) {
 // the cell of matSumResult at the coordinates to the sum of the
 // values at the coordinates of matA and matB.
 void* computeSum(void* args) {
-
     int row = *((int*) args);
     int col = *(((int*) args)+1);
-
     matSumResult[row][col] = matA[row][col] + matB[row][col];
-
     free(args);
-
     return NULL;
 }
 
@@ -49,6 +45,10 @@ void* computeSum(void* args) {
 // the cell of matSumResult at the coordinates to the difference of the
 // values at the coordinates of matA and matB.
 void* computeDiff(void* args) {
+    int row = *((int*) args);
+    int col = *(((int*) args)+1);
+    matDiffResult[row][col] = matA[row][col] - matB[row][col];
+    free(args);
     return NULL;
 }
 
@@ -56,6 +56,18 @@ void* computeDiff(void* args) {
 // the cell of matSumResult at the coordinates to the inner product
 // of matA and matB.
 void* computeProduct(void* args) {
+    int row = *((int*) args);
+    int col = *(((int*) args)+1);
+
+    int sum = 0;
+    for (int i = 0, j = 0; i < MAX && j < MAX;) {
+        sum += matA[row][i] * matB[j][col];
+        i++;
+        j++;
+    }
+
+    matProductResult[row][col] = sum;
+
     return NULL;
 }
 
@@ -81,11 +93,30 @@ int main() {
             int *args = (int*) malloc(2 * sizeof(int));
             *args = row;
             *(args+1) = col;
-            pthread_create(&sumThreads[row * 3 + col], NULL, computeSum, (void*) args);
+            pthread_create(&sumThreads[row * MAX + col], NULL, computeSum, (void*) args);
 
         }
     }
 
+    pthread_t diffThreads[MAX * MAX];
+    for (int row = 0; row < MAX; row++) {
+        for (int col = 0; col < MAX; col++) {
+            int *args = (int*) malloc(2 * sizeof(int));
+            *args = row;
+            *(args+1) = col;
+            pthread_create(&diffThreads[row * MAX + col], NULL, computeDiff, (void*) args);
+        }
+    }
+
+    pthread_t prodThreads[MAX * MAX];
+    for (int row = 0; row < MAX; row++) {
+        for (int col = 0; col < MAX; col++) {
+            int *args = (int*) malloc(2 * sizeof(int));
+            *args = row;
+            *(args + 1) = col;
+            pthread_create(&prodThreads[row * MAX + col], NULL, computeProduct, (void*) args);
+        }
+    }
     // 4. Create a thread for each cell of each matrix operation.
     //
     // You'll need to pass in the coordinates of the cell you want the thread
@@ -101,6 +132,11 @@ int main() {
     // to free that space when it's done with what's in that memory.
 
     // 5. Wait for all threads to finish.
+    for (int i = 0; i < MAX * MAX; ++i) {
+        pthread_join(sumThreads[i], NULL);
+        pthread_join(diffThreads[i], NULL);
+        pthread_join(prodThreads[i], NULL);
+    }
 
     // 6. Print the results.
     printf("Results:\n");
